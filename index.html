@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Atendimentos 2026 - Clínica Oftalmológica</title>
+    <!-- Chart.js para os gráficos interativos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
+        body { background-color: #f8fafc; color: #1e293b; padding-bottom: 40px; }
+        
+        /* Header */
+        header { background-color: #1e1b4b; color: #ffffff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        header h1 { font-size: 20px; font-weight: 700; }
+        header p { font-size: 12px; color: #c7d2fe; }
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+        .update-badge { background-color: #312e81; padding: 6px 12px; border-radius: 8px; font-size: 12px; border: 1px solid #4338ca; text-align: right; }
+        .update-badge span { display: block; font-weight: 600; color: #a5b4fc; font-size: 10px; }
+        
+        .btn-upload { background-color: #059669; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-upload:hover { background-color: #047857; }
+        input[type="file"] { display: none; }
+
+        /* Main Layout */
+        main { max-width: 1280px; margin: 24px auto; padding: 0 16px; }
+
+        /* Filtros */
+        .filters-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .filters-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .filters-title { font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
+        .btn-clear { background: none; border: none; color: #4f46e5; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .filter-group label { display: block; font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px; }
+        .filter-group select { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13px; outline: none; background: #ffffff; }
+
+        /* KPIs */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .kpi-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .kpi-title { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+        .kpi-value { font-size: 26px; font-weight: 800; margin-top: 4px; color: #0f172a; }
+        .kpi-value.purple { color: #3730a3; }
+        .kpi-value.emerald { color: #059669; }
+        .kpi-value.blue { color: #2563eb; }
+        .kpi-value.amber { color: #d97706; }
+
+        /* Charts */
+        .charts-row-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px; }
+        .charts-row-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px; }
+        .chart-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .chart-title { font-size: 14px; font-weight: 700; color: #334155; margin-bottom: 16px; }
+        .chart-container { position: relative; height: 260px; width: 100%; }
+
+        /* Table */
+        .table-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow: hidden; }
+        .table-wrapper { overflow-x: auto; max-height: 260px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+        th { background: #f1f5f9; color: #475569; font-weight: 600; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; }
+        td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+        .badge { background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 10px; }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Topbar -->
+    <header>
+        <div>
+            <h1>Painel de Atendimentos 2026</h1>
+            <p>Evolução de Indicadores da Clínica Oftalmológica</p>
+        </div>
+        
+        <div class="header-actions">
+            <div class="update-badge">
+                <span>Última Atualização</span>
+                <div id="last-update">Aguardando arquivo...</div>
+            </div>
+            <label for="csv-file-input" class="btn-upload">
+                📂 Importar Base CSV
+            </label>
+            <input type="file" id="csv-file-input" accept=".csv" onchange="handleFileUpload(event)">
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main>
+
+        <!-- Filtros do Painel -->
+        <section class="filters-card">
+            <div class="filters-header">
+                <span class="filters-title">🔍 Filtros do Painel</span>
+                <button onclick="resetFilters()" class="btn-clear">Limpar Filtros</button>
+            </div>
+            
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label>Mês / Período</label>
+                    <select id="filter-mes" onchange="applyFilters()">
+                        <option value="">Todos os Meses</option>
+                        <option value="01">Janeiro</option>
+                        <option value="02">Fevereiro</option>
+                        <option value="03">Março</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Maio</option>
+                        <option value="06">Junho</option>
+                        <option value="07">Julho</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Tipo de Atendimento</label>
+                    <select id="filter-tipo" onchange="applyFilters()">
+                        <option value="">Todos os Tipos</option>
+                        <option value="CONSULTA OFTALMO">Consulta Oftalmo</option>
+                        <option value="EXAME">Exame</option>
+                        <option value="RETORNO">Retorno</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Convênio</label>
+                    <select id="filter-convenio" onchange="applyFilters()">
+                        <option value="">Todos os Convênios</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Produção Médica</label>
+                    <select id="filter-medico" onchange="applyFilters()">
+                        <option value="">Todos os Médicos</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Cards de Indicadores (KPIs) -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-title">Atendimentos Únicos (Visitas)</div>
+                <div id="kpi-atendimentos" class="kpi-value purple">0</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-title">Total Procedimentos / Serviços</div>
+                <div id="kpi-servicos" class="kpi-value emerald">0</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-title">Pacientes Distintos</div>
+                <div id="kpi-pacientes" class="kpi-value blue">0</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-title">Média Proc. por Visita</div>
+                <div id="kpi-media" class="kpi-value amber">0.0</div>
+            </div>
+        </section>
+
+        <!-- Gráficos Principais -->
+        <div class="charts-row-2">
+            <div class="chart-card">
+                <div class="chart-title">Evolução Mensal de Atendimentos Únicos (Visitas)</div>
+                <div class="chart-container">
+                    <canvas id="chartAtendimentos"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-title">Evolução Mensal por Tipo de Atendimento</div>
+                <div class="chart-container">
+                    <canvas id="chartTipoAtendimento"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-row-2">
+            <div class="chart-card">
+                <div class="chart-title">Distribuição por Convênio</div>
+                <div class="chart-container">
+                    <canvas id="chartConvenio"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-title">Atendimentos por Médico</div>
+                <div class="chart-container">
+                    <canvas id="chartMedico"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <div class="chart-title">Amostra dos Atendimentos Filtrados</div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Paciente</th>
+                            <th>Tipo</th>
+                            <th>Convênio</th>
+                            <th>Serviço</th>
+                            <th>Cód. Atend</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- JS inserido aqui -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Script de Processamento e Gráficos -->
+    <script>
+        let rawData = [];
+        let filteredData = [];
+        let charts = {};
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                parseCSV(text);
+                updateTimestamp(new Date());
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function updateTimestamp(date) {
+            const options = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            document.getElementById('last-update').innerText = date.toLocaleDateString('pt-BR', options);
+        }
+
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            if (lines.length <= 1) return;
+
+            rawData = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                
+                let row = [];
+                let inQuotes = false;
+                let current = '';
+                for (let char of lines[i]) {
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        row.push(current.trim().replace(/^"|"$/g, ''));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                row.push(current.trim().replace(/^"|"$/g, ''));
+
+                if (row.length >= 8 && row[1] && row[4]) {
+                    let codAtend = row[9] || `${row[1]}_${row[4]}`;
+                    rawData.push({
+                        registro: row[0],
+                        nomePaciente: row[1],
+                        nomeMedico: row[2] || 'Não especificado',
+                        tipoAtendimento: row[3] || 'OUTROS',
+                        dataAtendimento: row[4],
+                        convenio: row[5] || 'PARTICULAR',
+                        qtd: parseFloat(row[6]) || 1,
+                        servico: row[7] || '',
+                        usuario: row[8] || '',
+                        codAtend: codAtend
+                    });
+                }
+            }
+
+            populateFilterOptions();
+            filteredData = [...rawData];
+            updateDashboard();
+        }
+
+        function populateFilterOptions() {
+            const convenios = [...new Set(rawData.map(d => d.convenio))].filter(Boolean).sort();
+            const medicos = [...new Set(rawData.map(d => d.nomeMedico))].filter(Boolean).sort();
+
+            const selConvenio = document.getElementById('filter-convenio');
+            selConvenio.innerHTML = '<option value="">Todos os Convênios</option>';
+            convenios.forEach(c => {
+                selConvenio.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+
+            const selMedico = document.getElementById('filter-medico');
+            selMedico.innerHTML = '<option value="">Todos os Médicos</option>';
+            medicos.forEach(m => {
+                selMedico.innerHTML += `<option value="${m}">${m}</option>`;
+            });
+        }
+
+        function applyFilters() {
+            const mes = document.getElementById('filter-mes').value;
+            const tipo = document.getElementById('filter-tipo').value;
+            const convenio = document.getElementById('filter-convenio').value;
+            const medico = document.getElementById('filter-medico').value;
+
+            filteredData = rawData.filter(d => {
+                let mesItem = '';
+                if(d.dataAtendimento.includes('/')) {
+                    mesItem = d.dataAtendimento.split('/')[1];
+                } else if(d.dataAtendimento.includes('-')) {
+                    mesItem = d.dataAtendimento.split('-')[1];
+                }
+
+                return (!mes || mesItem === mes) &&
+                       (!tipo || d.tipoAtendimento === tipo) &&
+                       (!convenio || d.convenio === convenio) &&
+                       (!medico || d.nomeMedico === medico);
+            });
+
+            updateDashboard();
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-mes').value = '';
+            document.getElementById('filter-tipo').value = '';
+            document.getElementById('filter-convenio').value = '';
+            document.getElementById('filter-medico').value = '';
+            filteredData = [...rawData];
+            updateDashboard();
+        }
+
+        function updateDashboard() {
+            const atendimentosUnicos = new Set(filteredData.map(d => d.codAtend)).size;
+            const totalServicos = filteredData.reduce((sum, d) => sum + d.qtd, 0);
+            const pacientesDistintos = new Set(filteredData.map(d => d.nomePaciente)).size;
+            const mediaProc = atendimentosUnicos > 0 ? (totalServicos / atendimentosUnicos).toFixed(1) : 0;
+
+            document.getElementById('kpi-atendimentos').innerText = atendimentosUnicos;
+            document.getElementById('kpi-servicos').innerText = totalServicos;
+            document.getElementById('kpi-pacientes').innerText = pacientesDistintos;
+            document.getElementById('kpi-media').innerText = mediaProc;
+
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            filteredData.slice(0, 15).forEach(row => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${row.dataAtendimento}</td>
+                        <td style="font-weight: 600;">${row.nomePaciente}</td>
+                        <td><span class="badge">${row.tipoAtendimento}</span></td>
+                        <td>${row.convenio}</td>
+                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${row.servico}">${row.servico}</td>
+                        <td style="font-family: monospace; color: #64748b;">${row.codAtend}</td>
+                    </tr>
+                `;
+            });
+
+            updateCharts();
+        }
+
+        function updateCharts() {
+            const mesesOrdem = [
+                { num: '01', nome: 'Jan' }, { num: '02', nome: 'Fev' }, { num: '03', nome: 'Mar' },
+                { num: '04', nome: 'Abr' }, { num: '05', nome: 'Mai' }, { num: '06', nome: 'Jun' },
+                { num: '07', nome: 'Jul' }, { num: '08', nome: 'Ago' }, { num: '09', nome: 'Set' },
+                { num: '10', nome: 'Out' }, { num: '11', nome: 'Nov' }, { num: '12', nome: 'Dez' }
+            ];
+
+            const labelsMeses = mesesOrdem.map(m => m.nome);
+
+            // 1. Gráfico de Linha: Evolução Geral de Atendimentos Únicos
+            let atendPorMes = {};
+            mesesOrdem.forEach(m => atendPorMes[m.num] = new Set());
+            filteredData.forEach(d => {
+                let m = d.dataAtendimento.includes('/') ? d.dataAtendimento.split('/')[1] : d.dataAtendimento.split('-')[1];
+                if(atendPorMes[m]) atendPorMes[m].add(d.codAtend);
+            });
+            const dataAtendimentos = mesesOrdem.map(m => atendPorMes[m.num].size);
+
+            const ctx1 = document.getElementById('chartAtendimentos').getContext('2d');
+            if (charts.atendimentos) charts.atendimentos.destroy();
+            charts.atendimentos = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: labelsMeses,
+                    datasets: [{
+                        label: 'Atendimentos Únicos',
+                        data: dataAtendimentos,
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // 2. Novo Gráfico de Linha: Evolução Mensal por Tipo de Atendimento
+            let tiposMap = {};
+            filteredData.forEach(d => {
+                let t = d.tipoAtendimento || 'OUTROS';
+                if(!tiposMap[t]) {
+                    tiposMap[t] = {};
+                    mesesOrdem.forEach(m => tiposMap[t][m.num] = 0);
+                }
+                let m = d.dataAtendimento.includes('/') ? d.dataAtendimento.split('/')[1] : d.dataAtendimento.split('-')[1];
+                if(tiposMap[t][m] !== undefined) tiposMap[t][m]++;
+            });
+
+            const coresTipos = {
+                'CONSULTA OFTALMO': '#4f46e5',
+                'EXAME': '#10b981',
+                'RETORNO': '#f59e0b',
+                'OUTROS': '#64748b'
+            };
+
+            const datasetsTipos = Object.keys(tiposMap).map(tipo => {
+                return {
+                    label: tipo,
+                    data: mesesOrdem.map(m => tiposMap[tipo][m.num]),
+                    borderColor: coresTipos[tipo] || '#3b82f6',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.3
+                };
+            });
+
+            const ctxTipo = document.getElementById('chartTipoAtendimento').getContext('2d');
+            if (charts.tipoAtendimento) charts.tipoAtendimento.destroy();
+            charts.tipoAtendimento = new Chart(ctxTipo, {
+                type: 'line',
+                data: {
+                    labels: labelsMeses,
+                    datasets: datasetsTipos
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+                }
+            });
+
+            // 3. Gráfico de Convênios (Doughnut)
+            let convenioCount = {};
+            filteredData.forEach(d => { convenioCount[d.convenio] = (convenioCount[d.convenio] || 0) + 1; });
+            const ctx2 = document.getElementById('chartConvenio').getContext('2d');
+            if (charts.convenio) charts.convenio.destroy();
+            charts.convenio = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(convenioCount),
+                    datasets: [{
+                        data: Object.values(convenioCount),
+                        backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#3b82f6', '#14b8a6', '#f97316']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+            });
+
+            // 4. Gráfico de Médicos (Bar)
+            let medicoCount = {};
+            filteredData.forEach(d => {
+                let med = d.nomeMedico || 'Não informado';
+                medicoCount[med] = (medicoCount[med] || 0) + 1;
+            });
+            const ctx3 = document.getElementById('chartMedico').getContext('2d');
+            if (charts.medico) charts.medico.destroy();
+            charts.medico = new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(medicoCount),
+                    datasets: [{
+                        label: 'Atendimentos',
+                        data: Object.values(medicoCount),
+                        backgroundColor: '#6366f1'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+    </script>
+</body>
+</html>
